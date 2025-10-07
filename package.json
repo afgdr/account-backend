@@ -1,7 +1,7 @@
 {
-  "name": "discord-backend",
+  "name": "discord-webhook-app",
   "version": "1.0.0",
-  "description": "Backend for Discord webhook",
+  "description": "Fullstack app for Discord webhooks",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
