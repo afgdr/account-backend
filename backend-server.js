@@ -50,14 +50,26 @@ function serveFrontend() {
         .form { margin-bottom: 20px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; }
-        input, textarea { 
+        input, textarea, select { 
             width: 100%; padding: 12px 16px; border: 2px solid #e1e5e9; border-radius: 8px; 
             font-size: 16px; transition: all 0.3s ease; font-family: inherit;
         }
-        input:focus, textarea:focus { 
+        input:focus, textarea:focus, select:focus { 
             outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         textarea { resize: vertical; min-height: 100px; }
+        .avatar-options { 
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;
+        }
+        .avatar-option { 
+            border: 2px solid #e1e5e9; border-radius: 8px; padding: 10px; text-align: center;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .avatar-option:hover { border-color: #667eea; }
+        .avatar-option.selected { border-color: #667eea; background: #f0f4ff; }
+        .avatar-emoji { font-size: 24px; margin-bottom: 5px; }
+        .avatar-name { font-size: 12px; color: #666; }
+        .custom-avatar-input { margin-top: 10px; }
         .send-button { 
             width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; 
             border: none; padding: 15px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; 
@@ -73,7 +85,11 @@ function serveFrontend() {
         .info h3 { color: #333; margin-bottom: 10px; }
         .info ol { margin-left: 20px; color: #555; }
         .info li { margin-bottom: 5px; }
-        @media (max-width: 600px) { .card { padding: 30px 20px; } h1 { font-size: 1.5rem; } }
+        @media (max-width: 600px) { 
+            .card { padding: 30px 20px; } 
+            h1 { font-size: 1.5rem; }
+            .avatar-options { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
@@ -96,6 +112,42 @@ function serveFrontend() {
                 </div>
                 
                 <div class="form-group">
+                    <label>Аватарка отправителя:</label>
+                    <div class="avatar-options" id="avatarOptions">
+                        <div class="avatar-option" data-avatar="👤" data-url="">
+                            <div class="avatar-emoji">👤</div>
+                            <div class="avatar-name">По умолчанию</div>
+                        </div>
+                        <div class="avatar-option" data-avatar="🤖" data-url="">
+                            <div class="avatar-emoji">🤖</div>
+                            <div class="avatar-name">Бот</div>
+                        </div>
+                        <div class="avatar-option" data-avatar="🎮" data-url="">
+                            <div class="avatar-emoji">🎮</div>
+                            <div class="avatar-name">Геймер</div>
+                        </div>
+                        <div class="avatar-option" data-avatar="👨‍💻" data-url="">
+                            <div class="avatar-emoji">👨‍💻</div>
+                            <div class="avatar-name">Разработчик</div>
+                        </div>
+                        <div class="avatar-option" data-avatar="🎨" data-url="">
+                            <div class="avatar-emoji">🎨</div>
+                            <div class="avatar-name">Художник</div>
+                        </div>
+                        <div class="avatar-option" data-avatar="📚" data-url="">
+                            <div class="avatar-emoji">📚</div>
+                            <div class="avatar-name">Студент</div>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-avatar-input">
+                        <label for="customAvatarUrl">Или ссылка на свою аватарку:</label>
+                        <input type="text" id="customAvatarUrl" placeholder="https://example.com/avatar.png">
+                        <small>Оставьте пустым, чтобы использовать emoji аватарку</small>
+                    </div>
+                </div>
+                
+                <div class="form-group">
                     <label for="webhookUrl">Webhook URL:</label>
                     <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." required>
                     <small>Обязательно для заполнения. Получите в настройках Discord сервера.</small>
@@ -114,6 +166,13 @@ function serveFrontend() {
                     <li>Нажмите "Создать webhook" или выберите существующий</li>
                     <li>Скопируйте URL webhook и вставьте в поле выше</li>
                 </ol>
+                
+                <h3 style="margin-top: 15px;">🖼️ Про аватарки:</h3>
+                <ul>
+                    <li>Выберите emoji аватарку из списка</li>
+                    <li>Или укажите ссылку на изображение для кастомной аватарки</li>
+                    <li>Аватарка будет отображаться в Discord рядом с сообщением</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -124,6 +183,9 @@ function serveFrontend() {
                 this.sendBtn = document.getElementById('sendBtn');
                 this.statusDiv = document.getElementById('status');
                 this.messageForm = document.getElementById('messageForm');
+                this.selectedAvatar = '👤';
+                this.customAvatarUrl = '';
+                
                 this.initializeApp();
             }
             
@@ -132,15 +194,58 @@ function serveFrontend() {
                     e.preventDefault();
                     this.processMessageSending();
                 });
+                
+                // Инициализация выбора аватарки
+                this.initAvatarSelection();
+                
+                // Следим за изменением кастомной аватарки
+                document.getElementById('customAvatarUrl').addEventListener('input', (e) => {
+                    this.customAvatarUrl = e.target.value.trim();
+                    if (this.customAvatarUrl) {
+                        this.clearAvatarSelection();
+                    }
+                });
+            }
+            
+            initAvatarSelection() {
+                const avatarOptions = document.querySelectorAll('.avatar-option');
+                
+                avatarOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        // Снимаем выделение со всех options
+                        avatarOptions.forEach(opt => opt.classList.remove('selected'));
+                        // Выделяем выбранную
+                        option.classList.add('selected');
+                        
+                        this.selectedAvatar = option.getAttribute('data-avatar');
+                        this.customAvatarUrl = ''; // Сбрасываем кастомную аватарку
+                        document.getElementById('customAvatarUrl').value = '';
+                    });
+                });
+                
+                // Выбираем аватарку по умолчанию
+                avatarOptions[0].classList.add('selected');
+            }
+            
+            clearAvatarSelection() {
+                const avatarOptions = document.querySelectorAll('.avatar-option');
+                avatarOptions.forEach(opt => opt.classList.remove('selected'));
+                this.selectedAvatar = '';
             }
             
             async processMessageSending() {
                 const username = document.getElementById('username').value.trim();
                 const message = document.getElementById('message').value.trim();
                 const webhookUrl = document.getElementById('webhookUrl').value.trim();
+                const customAvatarUrl = document.getElementById('customAvatarUrl').value.trim();
                 
                 if (!username || !message || !webhookUrl) {
-                    this.displayStatusMessage('Заполните все поля', 'error');
+                    this.displayStatusMessage('Заполните все обязательные поля', 'error');
+                    return;
+                }
+
+                if (!webhookUrl.includes('discord.com/api/webhooks/')) {
+                    this.displayStatusMessage('Неверный формат Webhook URL', 'error');
                     return;
                 }
 
@@ -148,10 +253,18 @@ function serveFrontend() {
                 this.sendBtn.disabled = true;
 
                 try {
+                    const requestData = {
+                        username: username,
+                        message: message,
+                        webhookUrl: webhookUrl,
+                        avatar: this.selectedAvatar,
+                        avatarUrl: customAvatarUrl || ''
+                    };
+
                     const response = await fetch('/api/send-to-discord', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, message, webhookUrl })
+                        body: JSON.stringify(requestData)
                     });
                     
                     const data = await response.json();
@@ -164,7 +277,8 @@ function serveFrontend() {
                     }
                     
                 } catch (error) {
-                    this.displayStatusMessage('❌ Ошибка подключения', 'error');
+                    this.displayStatusMessage('❌ Ошибка подключения к серверу', 'error');
+                    console.error('Ошибка:', error);
                 } finally {
                     this.sendBtn.disabled = false;
                 }
@@ -191,17 +305,17 @@ function serveFrontend() {
 // Инициализируем фронтенд
 serveFrontend();
 
-// 📨 API для отправки в Discord
+// 📨 API для отправки в Discord (обновленный для аватарки)
 app.post('/api/send-to-discord', async (req, res) => {
     console.log('📨 Получен запрос:', req.body);
     
     try {
-        const { username, message, webhookUrl } = req.body;
+        const { username, message, webhookUrl, avatar, avatarUrl } = req.body;
 
         if (!username || !message || !webhookUrl) {
             return res.status(400).json({
                 success: false,
-                error: 'Все поля обязательны'
+                error: 'Все обязательные поля должны быть заполнены'
             });
         }
 
@@ -212,19 +326,57 @@ app.post('/api/send-to-discord', async (req, res) => {
             });
         }
 
+        // Формируем payload для Discord
         const discordPayload = {
             username: username.substring(0, 80),
-            embeds: [{
-                title: "💬 Новое сообщение",
-                description: message.substring(0, 2000),
-                color: 0x667eea,
-                timestamp: new Date().toISOString(),
-                fields: [
-                    { name: "👤 Отправитель", value: username, inline: true },
-                    { name: "🕒 Время", value: new Date().toLocaleString('ru-RU'), inline: true }
-                ]
-            }]
+            content: message.substring(0, 2000)
         };
+
+        // Добавляем аватарку если указана
+        if (avatarUrl) {
+            discordPayload.avatar_url = avatarUrl;
+        } else if (avatar) {
+            // Для emoji аватарки создаем embed с иконкой
+            discordPayload.embeds = [
+                {
+                    title: `Сообщение от ${username}`,
+                    description: message.substring(0, 2000),
+                    color: 0x667eea,
+                    timestamp: new Date().toISOString(),
+                    thumbnail: {
+                        url: this.getAvatarIcon(avatar)
+                    },
+                    fields: [
+                        { name: "👤 Отправитель", value: username, inline: true },
+                        { name: "🕒 Время", value: new Date().toLocaleString('ru-RU'), inline: true },
+                        { name: "🖼️ Аватар", value: avatar, inline: true }
+                    ],
+                    footer: {
+                        text: "Отправлено через Webhook App",
+                        icon_url: this.getAvatarIcon(avatar)
+                    }
+                }
+            ];
+            // Убираем content если есть embed
+            delete discordPayload.content;
+        } else {
+            // Стандартное сообщение без особой аватарки
+            discordPayload.embeds = [
+                {
+                    title: "💬 Новое сообщение",
+                    description: message.substring(0, 2000),
+                    color: 0x667eea,
+                    timestamp: new Date().toISOString(),
+                    fields: [
+                        { name: "👤 Отправитель", value: username, inline: true },
+                        { name: "🕒 Время", value: new Date().toLocaleString('ru-RU'), inline: true }
+                    ]
+                }
+            ];
+            delete discordPayload.content;
+        }
+
+        console.log('🔄 Отправка в Discord с аватаркой:', avatar || avatarUrl);
 
         const discordResponse = await fetch(webhookUrl, {
             method: 'POST',
@@ -233,8 +385,15 @@ app.post('/api/send-to-discord', async (req, res) => {
         });
 
         if (discordResponse.ok) {
-            res.json({ success: true, message: 'Сообщение отправлено!' });
+            console.log('✅ Сообщение отправлено в Discord');
+            res.json({ 
+                success: true, 
+                message: 'Сообщение отправлено!',
+                avatarUsed: avatar || avatarUrl || 'стандартная'
+            });
         } else {
+            const errorText = await discordResponse.text();
+            console.error('❌ Ошибка Discord:', discordResponse.status, errorText);
             res.status(500).json({
                 success: false,
                 error: 'Ошибка Discord: ' + discordResponse.status
@@ -242,6 +401,7 @@ app.post('/api/send-to-discord', async (req, res) => {
         }
 
     } catch (error) {
+        console.error('❌ Серверная ошибка:', error);
         res.status(500).json({
             success: false,
             error: 'Ошибка сервера: ' + error.message
@@ -249,21 +409,35 @@ app.post('/api/send-to-discord', async (req, res) => {
     }
 });
 
+// Функция для получения иконки аватарки
+function getAvatarIcon(emoji) {
+    const emojiIcons = {
+        '👤': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f464.svg',
+        '🤖': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f916.svg',
+        '🎮': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f3ae.svg',
+        '👨‍💻': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f468-200d-1f4bb.svg',
+        '🎨': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f3a8.svg',
+        '📚': 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4da.svg'
+    };
+    return emojiIcons[emoji] || 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f464.svg';
+}
+
 // 📊 Статус API
 app.get('/api/status', (req, res) => {
     res.json({
         success: true,
         message: 'API работает! 🚀',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        features: ['send-messages', 'custom-avatars', 'emoji-avatars']
     });
 });
 
 // 🚀 Запуск сервера
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(\`
-🎉 Discord App запущен!
-📍 Порт: \${PORT}
-🌐 Среда: \${process.env.NODE_ENV || 'development'}
+    console.log(`
+🎉 Discord App с аватарками запущен!
+📍 Порт: ${PORT}
+🌐 Среда: ${process.env.NODE_ENV || 'development'}
 🚀 Готов к работе!
-    \`);
+    `);
 });
