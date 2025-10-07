@@ -10,8 +10,10 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// 📨 Отправка сообщения в Discord
+// 📨 Главный endpoint для отправки в Discord
 app.post('/api/send-to-discord', async (req, res) => {
+    console.log('📨 Получен запрос:', req.body);
+    
     try {
         const { username, message, webhookUrl } = req.body;
 
@@ -23,27 +25,35 @@ app.post('/api/send-to-discord', async (req, res) => {
             });
         }
 
-        // Webhook URL (из запроса или переменная окружения)
+        // Используем webhook из запроса или переменной окружения
         const discordWebhookUrl = webhookUrl || process.env.DISCORD_WEBHOOK_URL;
 
         if (!discordWebhookUrl) {
             return res.status(400).json({
                 success: false,
-                error: 'Webhook URL не указан. Укажите его в форме или настройте на сервере.'
+                error: 'Webhook URL не указан. Добавьте его в форму или настройте в переменных окружения.'
             });
         }
 
-        // Создаем embed сообщение для Discord
+        // Проверяем валидность webhook URL
+        if (!discordWebhookUrl.includes('discord.com/api/webhooks/')) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат Webhook URL'
+            });
+        }
+
+        // Подготавливаем данные для Discord
         const discordPayload = {
-            username: username,
+            username: username.substring(0, 80),
             embeds: [
                 {
                     title: "💬 Новое сообщение с сайта",
-                    description: message,
+                    description: message.substring(0, 2000),
                     color: 0x667eea,
                     timestamp: new Date().toISOString(),
                     footer: {
-                        text: "Отправлено через Cloudflare + Render"
+                        text: "Отправлено через Render"
                     },
                     fields: [
                         {
@@ -61,6 +71,8 @@ app.post('/api/send-to-discord', async (req, res) => {
             ]
         };
 
+        console.log('🔄 Отправка в Discord...');
+        
         // Отправляем в Discord
         const discordResponse = await fetch(discordWebhookUrl, {
             method: 'POST',
@@ -71,17 +83,17 @@ app.post('/api/send-to-discord', async (req, res) => {
         });
 
         if (discordResponse.ok) {
-            console.log(`✅ Сообщение отправлено в Discord от ${username}`);
+            console.log('✅ Сообщение отправлено в Discord');
             res.json({
                 success: true,
-                message: 'Сообщение отправлено в Discord'
+                message: 'Сообщение успешно отправлено в Discord!'
             });
         } else {
             const errorText = await discordResponse.text();
-            console.error('❌ Ошибка Discord:', errorText);
+            console.error('❌ Ошибка Discord:', discordResponse.status, errorText);
             res.status(500).json({
                 success: false,
-                error: 'Ошибка при отправке в Discord'
+                error: `Ошибка Discord: ${discordResponse.status}`
             });
         }
 
@@ -95,12 +107,24 @@ app.post('/api/send-to-discord', async (req, res) => {
 });
 
 // 📊 Статус API
-app.get('/', (req, res) => {
+app.get('/api/status', (req, res) => {
     res.json({
         success: true,
-        message: 'Discord Webhook API работает!',
+        message: 'Discord Webhook API работает! 🚀',
         timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// 🏠 Главная страница API
+app.get('/', (req, res) => {
+    res.json({
+        name: 'Discord Webhook API',
+        version: '1.0.0',
+        status: 'active',
         endpoints: {
+            'GET /': 'Информация об API',
+            'GET /api/status': 'Статус сервера',
             'POST /api/send-to-discord': 'Отправить сообщение в Discord'
         }
     });
@@ -112,6 +136,6 @@ app.listen(PORT, '0.0.0.0', () => {
 🎉 Discord Webhook Server запущен!
 📍 Порт: ${PORT}
 🌐 Среда: ${process.env.NODE_ENV || 'development'}
-🚀 Готов к работе!
+🚀 API доступен по: http://0.0.0.0:${PORT}
     `);
 });
