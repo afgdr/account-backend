@@ -1,7 +1,7 @@
 {
-  "name": "render-backend",
+  "name": "discord-webhook-backend",
   "version": "1.0.0",
-  "description": "Backend for Render deployment",
+  "description": "Backend for Discord webhook messages",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,12 +10,9 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "node-fetch": "^2.6.7"
   },
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": ["render", "backend", "api"],
-  "author": "Your Name",
-  "license": "MIT"
+    "node": ">=16.0.0"
+  }
 }
