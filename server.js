@@ -1,12 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const path = require('path');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public')); // Раздача статических файлов
 
 const PORT = process.env.PORT || 3000;
 
@@ -25,18 +27,15 @@ app.post('/api/send-to-discord', async (req, res) => {
             });
         }
 
-        // Используем webhook из запроса или переменной окружения
-        const discordWebhookUrl = webhookUrl || process.env.DISCORD_WEBHOOK_URL;
-
-        if (!discordWebhookUrl) {
+        if (!webhookUrl) {
             return res.status(400).json({
                 success: false,
-                error: 'Webhook URL не указан. Добавьте его в форму или настройте в переменных окружения.'
+                error: 'Webhook URL обязателен'
             });
         }
 
         // Проверяем валидность webhook URL
-        if (!discordWebhookUrl.includes('discord.com/api/webhooks/')) {
+        if (!webhookUrl.includes('discord.com/api/webhooks/')) {
             return res.status(400).json({
                 success: false,
                 error: 'Неверный формат Webhook URL'
@@ -74,7 +73,7 @@ app.post('/api/send-to-discord', async (req, res) => {
         console.log('🔄 Отправка в Discord...');
         
         // Отправляем в Discord
-        const discordResponse = await fetch(discordWebhookUrl, {
+        const discordResponse = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -101,7 +100,7 @@ app.post('/api/send-to-discord', async (req, res) => {
         console.error('❌ Серверная ошибка:', error);
         res.status(500).json({
             success: false,
-            error: 'Внутренняя ошибка сервера'
+            error: 'Внутренняя ошибка сервера: ' + error.message
         });
     }
 });
@@ -111,31 +110,22 @@ app.get('/api/status', (req, res) => {
     res.json({
         success: true,
         message: 'Discord Webhook API работает! 🚀',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        timestamp: new Date().toISOString()
     });
 });
 
-// 🏠 Главная страница API
-app.get('/', (req, res) => {
-    res.json({
-        name: 'Discord Webhook API',
-        version: '1.0.0',
-        status: 'active',
-        endpoints: {
-            'GET /': 'Информация об API',
-            'GET /api/status': 'Статус сервера',
-            'POST /api/send-to-discord': 'Отправить сообщение в Discord'
-        }
-    });
+// 🏠 Все остальные GET запросы отдаем фронтенд
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 🚀 Запуск сервера
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`
-🎉 Discord Webhook Server запущен!
+🎉 Fullstack Discord App запущен!
 📍 Порт: ${PORT}
 🌐 Среда: ${process.env.NODE_ENV || 'development'}
-🚀 API доступен по: http://0.0.0.0:${PORT}
+📁 Статика: ./public
+🚀 Приложение доступно по: http://0.0.0.0:${PORT}
     `);
 });
