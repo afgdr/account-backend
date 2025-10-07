@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отправка сообщений в Discord</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>💬 Отправка в Discord</h1>
+                <p class="subtitle">Напишите сообщение и оно придет на ваш Discord сервер</p>
+            </div>
+
+            <form id="messageForm" class="form">
+                <div class="form-group">
+                    <label for="username">Ваше имя:</label>
+                    <input type="text" id="username" placeholder="Введите ваше имя" value="Гость" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Сообщение:</label>
+                    <textarea id="message" placeholder="Введите ваше сообщение..." rows="4" required></textarea>
+                    <div id="charCounter" class="char-counter">0/2000</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="webhookUrl">Webhook URL:</label>
+                    <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." required>
+                    <small>Обязательно для заполнения. Получите в настройках Discord сервера.</small>
+                </div>
+                
+                <button type="submit" id="sendBtn" class="send-button">
+                    <span class="btn-text">📨 Отправить в Discord</span>
+                    <span class="btn-loading">⏳ Отправка...</span>
+                </button>
+            </form>
+            
+            <div id="status" class="status"></div>
+            
+            <div class="info">
+                <h3>📋 Как получить Webhook URL:</h3>
+                <ol>
+                    <li>Откройте настройки Discord сервера</li>
+                    <li>Перейдите в "Интеграции" → "Webhooks"</li>
+                    <li>Нажмите "Создать webhook" или выберите существующий</li>
+                    <li>Скопируйте URL webhook и вставьте в поле выше</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
